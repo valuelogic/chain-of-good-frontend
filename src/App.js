@@ -4,8 +4,9 @@ import React, { Component } from 'react';
 import './App.css';
 import Campaing from './contracts/Campaign.json';
 import IERC20 from './contracts/IERC20.json';
-// import * as IPFS from 'ipfs-core'
-// import * as IPFS from 'ipfs';
+import * as IPFS from 'ipfs';
+import { TextDecoder } from 'text-decoding';
+
 class App extends Component {
   state = {
     toGive: 0,
@@ -18,7 +19,10 @@ class App extends Component {
     myDonationInPool: 0,
     estimatedReward: 0,
     startTime: 0,
-    endTime: 0
+    endTime: 0,
+    title: "",
+    description: "",
+    imageUrl: "",
   };
   campaign;
   token;
@@ -27,6 +31,7 @@ class App extends Component {
     let provider = await detectEthereumProvider();
 
     if (provider) {
+      console.log('start');
       await provider.request({ method: 'eth_requestAccounts' });
       provider = new ethers.providers.Web3Provider(provider);
 
@@ -34,42 +39,35 @@ class App extends Component {
       const signerAddress = await signer.getAddress();
 
       this.campaign = new ethers.Contract(
-        '0x6100A3E7A1AEf9ba4f70CDBaEc2b39d7EFBAE6dF',
+        process.env.REACT_APP_CAMPAIGN_CONTRACT,
         Campaing.abi,
         signer
       );
 
       this.token = new ethers.Contract(
-        '0x2058A9D7613eEE744279e3856Ef0eAda5FCbaA7e',
+        process.env.REACT_APP_TOKEN_CONTRACT,
         IERC20.abi,
         signer
       );
 
       this.aToken = new ethers.Contract(
-        '0x2271e3Fef9e15046d09E1d78a8FF038c691E9Cf9',
+        process.env.REACT_APP_A_TOKEN_CONTRACT,
         IERC20.abi,
         signer
       );
 
+      console.log(this.campaign.address);
       const info = await this.campaign.info();
+
       console.log(info.startTime);
       console.log(info.donationPool);
 
-      // const pool = await this.campaign.donationPool();
       const myDonation = await this.campaign.donorsToDonation(signerAddress);
       const aTokensInContract = await this.aToken.balanceOf(
         this.campaign.address
       );
 
-      console.log()
-
-      // const beneficiaryWallet = await this.campaign.beneficiaryWallet();
-      // const additionalFounds = await this.campaign.additionalFounds();
-      // const collectedReward = await this.campaign.collectedReward();
-      // const startTime = await this.campaign.startTime();
-      // const endTime = await this.campaign.endTime();
-
-      this.setState({ 
+      this.setState({
         collectedReward: info.collectedReward,
         startTime: info.startTime,
         endTime: info.endTime,
@@ -80,8 +78,7 @@ class App extends Component {
         additionalFounds: info.additionalPassedFounds,
       });
 
-      console.log(Number.MAX_SAFE_INTEGER);
-      console.log("Loaded!");
+      console.log('Loaded!');
     } else {
       console.log('Error');
     }
@@ -98,7 +95,7 @@ class App extends Component {
 
     this.setState({ approved: true });
 
-    console.log("Joined to the campaign");
+    console.log('Joined to the campaign');
   };
 
   donate = async () => {
@@ -106,34 +103,34 @@ class App extends Component {
 
     const tx = await this.campaign.donate(amount);
     await tx.wait();
-    console.log("Donated");
-  }
+    console.log('Donated');
+  };
 
   giveMeBackMyFounds = async () => {
     const amount = ethers.BigNumber.from(this.state.toReturn + '000000');
 
     const tx = await this.campaign.giveMyFoundsBack(amount);
     await tx.wait();
-    console.log("Founds returned");
-  }
+    console.log('Founds returned');
+  };
 
   giveMeBackAllMyFounds = async () => {
     const tx = await this.campaign.giveAllMyFoundsBack();
     await tx.wait();
-    console.log("Founds returned");
-  }
+    console.log('Founds returned');
+  };
 
   end = async () => {
     const tx = await this.campaign.endCampaing();
     await tx.wait();
-    console.log("Campaign ended");
-  }
+    console.log('Campaign ended');
+  };
 
   forceEnd = async () => {
     const tx = await this.campaign.forceEnd();
     await tx.wait();
-    console.log("Campaign ended");
-  }
+    console.log('Campaign ended');
+  };
 
   splitMyFounds = async () => {
     const toGive = ethers.BigNumber.from(this.state.toGive + '000000');
@@ -141,51 +138,70 @@ class App extends Component {
     const tx = await this.campaign.splitMyFounds(toGive);
     await tx.wait();
 
-    console.log("Founds transfered");
-  }
+    console.log('Founds transfered');
+  };
 
   transferAllToCharity = async () => {
     const tx = await this.campaign.transferAllMyFoundsToCharity();
     await tx.wait();
 
-    console.log("Founds transfered");
-  }
-
-  getCampaignData = async () => {
-    // const donationPool;
-    // const charityWallet;
-    // const passedFounds;
-    // const collectedRewared
+    console.log('Founds transfered');
   };
 
-  //   getIpfsData = async () => {
+  getIpfsData = async () => {
+    const node = await IPFS.create();
 
-  //     const node = await IPFS.create()
+    const chunks = [];
+    for await (const chunk of node.cat(
+      'QmZEzNuysnpsdrmJupwQq8HMZvnWmEJDGYqftpDZX9NvH1'
+    )) {
+      chunks.push(chunk);
+    }
 
-  // const stream = node.cat('QmTYJ3XSP7GvKzAasGvfVayKYhDf2iQ54RYi77oGbFAboU')
-  // let data = ''
+    const metadata = JSON.parse(new TextDecoder('utf-8').decode(chunks[0]));
 
-  // for await (const chunk of stream) {
-  //   // chunks of data are returned as a Buffer, convert it back to a string
-  //   data += chunk.toString()
-  // }
+    console.log(metadata);
+    const content = [];
+    for await (const chunk of node.cat(metadata.imageCID)) {
+      content.push(chunk);
+    }
 
-  // console.log(data)
-  // console.log("jaaa");
-
-  //   }
+    const url = URL.createObjectURL(new Blob(content, { type: 'image/png' }));
+    this.setState({
+      title: metadata.title,
+      description: metadata.description,
+      imageUrl: url
+    })
+    console.log(url);
+  };
 
   render() {
     return (
       <div>
-        {/* <button onClick={() => this.getIpfsData()}>Click me</button> */}
+        <div>
+          <h2>Info from metadata</h2>
+          <div>
+            <span>Title: {this.state.title}</span>
+          </div>
+          <div>
+            <span>Description: {this.state.description}</span>
+          </div>
+          <div>
+            <span>Image : <img src={this.state.imageUrl} alt="Image" width="50" height="25"></img></span>
+          </div>
+        </div>
+        <button onClick={() => this.getIpfsData()}>Load metadata</button>
         <div>
           <h2>Information</h2>
           <div>
-            <span>Start date: {new Date(this.state.startTime*1000).toString()}</span>
+            <span>
+              Start date: {new Date(this.state.startTime * 1000).toString()}
+            </span>
           </div>
           <div>
-            <span>End date: {new Date(this.state.endTime*1000).toString()}</span>
+            <span>
+              End date: {new Date(this.state.endTime * 1000).toString()}
+            </span>
           </div>
           <div>
             <span>Charity wallet: {this.state.beneficiaryWallet}</span>
@@ -195,10 +211,21 @@ class App extends Component {
             {ethers.utils.formatUnits(this.state.donationPool, 6)}
           </div>
           <div>
-            <span>Reward from Aave: {ethers.utils.formatUnits(this.state.collectedReward, 6)}</span>
+            <span>
+              Reward from Aave:{' '}
+              {ethers.utils.formatUnits(this.state.collectedReward, 6)}
+            </span>
           </div>
           <div>
-            <span>Passed Founds: {ethers.utils.formatUnits(ethers.BigNumber.from(this.state.additionalFounds).add(ethers.BigNumber.from(this.state.collectedReward)), 6)}</span>
+            <span>
+              Passed Founds:{' '}
+              {ethers.utils.formatUnits(
+                ethers.BigNumber.from(this.state.additionalFounds).add(
+                  ethers.BigNumber.from(this.state.collectedReward)
+                ),
+                6
+              )}
+            </span>
           </div>
           <div>
             <span>
@@ -207,8 +234,9 @@ class App extends Component {
             </span>
           </div>
           <div>
-            <span>My donation in pool: 
-            {ethers.utils.formatUnits(this.state.myDonationInPool, 6)}
+            <span>
+              My donation in pool:
+              {ethers.utils.formatUnits(this.state.myDonationInPool, 6)}
             </span>
           </div>
         </div>
@@ -220,17 +248,31 @@ class App extends Component {
           </div>
           <div>
             <span>Donate some founds</span>
-            <input placeholder="Donation" onChange={((event) => this.updateInputFieldState(event, 'donation'))}></input>
+            <input
+              placeholder="Donation"
+              onChange={(event) =>
+                this.updateInputFieldState(event, 'donation')
+              }
+            ></input>
             <button onClick={() => this.donate()}>Donate</button>
           </div>
           <div>
             <span>Get your founds back</span>
-            <input placeholder="How much" onChange={((event) => this.updateInputFieldState(event, 'toReturn'))}></input>
-            <button onClick={() => this.giveMeBackMyFounds()}>Give me founds</button>
+            <input
+              placeholder="How much"
+              onChange={(event) =>
+                this.updateInputFieldState(event, 'toReturn')
+              }
+            ></input>
+            <button onClick={() => this.giveMeBackMyFounds()}>
+              Give me founds
+            </button>
           </div>
           <div>
             <span>Get your all founds back</span>
-            <button onClick={() => this.giveMeBackAllMyFounds()}>Give me all my founds</button>
+            <button onClick={() => this.giveMeBackAllMyFounds()}>
+              Give me all my founds
+            </button>
           </div>
           <div>
             <span>End campaing</span>
@@ -240,12 +282,17 @@ class App extends Component {
           <div></div>
           <div>
             <span>Split my founds</span>
-            <input placeholder="How much" onChange={((event) => this.updateInputFieldState(event, 'toGive'))}></input>
+            <input
+              placeholder="How much"
+              onChange={(event) => this.updateInputFieldState(event, 'toGive')}
+            ></input>
             <button onClick={() => this.splitMyFounds()}>Split them</button>
           </div>
           <div>
             <span>Give all founds to charity</span>
-            <button onClick={()=> this.transferAllToCharity()}>Give all to charity</button>
+            <button onClick={() => this.transferAllToCharity()}>
+              Give all to charity
+            </button>
           </div>
         </div>
       </div>
